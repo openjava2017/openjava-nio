@@ -1,0 +1,36 @@
+apply plugin: 'java'
+apply plugin: 'idea'
+
+group = 'com.diligrp'
+archivesBaseName = 'openjava-nio'
+version = '1.0.0'
+sourceCompatibility = 1.7
+
+compileJava {
+    options.encoding = 'UTF-8'
+}
+
+ext {
+    springVersion = '3.2.8.RELEASE'
+}
+
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'Dili openjava-nio workgroup',
+                   'Implementation-Version': version,
+                   'provider': 'gradle'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile group: 'org.springframework', name: 'spring-context', version: springVersion
+    compile group: 'org.springframework', name: 'spring-beans', version: springVersion
+    compile group: 'com.google.protobuf', name: 'protobuf-java', version: '2.5.0'
+    compile group: 'commons-lang', name: 'commons-lang', version: '2.6'
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.5'
+    compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.0.10'
+}
