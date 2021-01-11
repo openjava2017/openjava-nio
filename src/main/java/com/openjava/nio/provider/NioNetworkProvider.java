@@ -35,6 +35,17 @@ public class NioNetworkProvider extends LifeCycle implements INetworkProvider
     private final IProcessor<INioSession>[] pool =  new NioSessionProcessor[processors];
     private final Scheduler scheduler = new ScheduledExecutor();
 
+    private static NioNetworkProvider instance = null;
+
+    public static synchronized NioNetworkProvider getInstance() throws Exception {
+        if (instance == null) {
+            instance = new NioNetworkProvider();
+            instance.start();
+        }
+
+        return instance;
+    }
+
     @Override
     public void registerConnection(SocketAddress remoteAddress, ISessionEventListener eventListener,
         ISessionDataListener dataListener, long timeoutInMillis) throws IOException

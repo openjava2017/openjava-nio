@@ -2,13 +2,13 @@ package com.openjava.nio.infrastructure;
 
 public interface ILifeCycle 
 {
-	public void start() throws Exception;
+	void start() throws Exception;
 	
-	public void stop() throws Exception;
+	void stop() throws Exception;
 	
-	public boolean isRunning();
+	boolean isRunning();
 	
-	public boolean isStarted();
+	boolean isStarted();
 	
-	public String getState();
+	String getState();
 }

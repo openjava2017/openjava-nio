@@ -17,77 +17,49 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class SessionDataChannel implements IDataChannel
+public class BufferedDataChannel implements IDataChannel
 {
-    private static Logger LOG = LoggerFactory.getLogger(SessionDataChannel.class);
+    private static Logger LOG = LoggerFactory.getLogger(BufferedDataChannel.class);
 
-    private static final int PROTOCOL_HEAD_SIZE = 4;
+    private static final int DEFAULT_BUFFER_SIZE = 1024;
 
     private INioSession session;
-
-    private final ByteBuffer headerBuffer;
-
-    private ByteBuffer bodyBuffer;
 
     private final Queue<ByteBuffer> dataBuffer = new ConcurrentLinkedQueue<ByteBuffer>();
 
     private final List<ISessionDataListener> listeners = new CopyOnWriteArrayList<ISessionDataListener>();
 
-    public SessionDataChannel(INioSession session)
+    public BufferedDataChannel(INioSession session)
     {
         this.session = session;
-        this.headerBuffer =  ByteBuffer.allocate(PROTOCOL_HEAD_SIZE).order(ByteOrder.LITTLE_ENDIAN);
     }
 
     @Override
     public byte[] read() throws IOException
     {
-        int numOfByte;
         SocketChannel channel = session.getChannel();
-
-        if (bodyBuffer == null) {
-            numOfByte = channel.read(headerBuffer);
-            if(numOfByte == -1) {
-                throw new ClosedSessionException("Nio session[SID=" + session.getId() + "] being closed by remote end");
-            }
-
-            if (headerBuffer.hasRemaining()) {
-                return null;
-            } else {
-                headerBuffer.flip();
-                int bodySize = headerBuffer.getInt();
-                bodyBuffer = ByteBuffer.allocate(bodySize - 4).order(ByteOrder.LITTLE_ENDIAN);
-            }
+        ByteBuffer data = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
+        int numOfByte = channel.read(data);
+        if (numOfByte == 0) {
+            return null;
         }
-
-        numOfByte = channel.read(bodyBuffer);
         if(numOfByte == -1) {
             throw new ClosedSessionException("Nio session[SID=" + session.getId() + "] being closed by remote end");
-        } else {
-            LOG.debug("{} bytes read from session[SID={}]", numOfByte, session.getId());
         }
-
-        if (bodyBuffer.hasRemaining()) {
-            return null;
-        } else {
-            bodyBuffer.flip();
-            byte[] packet = bodyBuffer.array();
-            headerBuffer.clear();
-            bodyBuffer = null;
-
-            // fire data received event
-            fireDataReceived(packet);
-            return packet;
-        }
+        LOG.debug("{} bytes read from session[SID={}]", numOfByte, session.getId());
+        data.flip();
+        byte[] packet = new byte[data.remaining()];
+        data.get(packet);
+        // fire data received event
+        fireDataReceived(packet);
+        return packet;
     }
 
     @Override
     public void send(byte[] packet)
     {
         if (packet != null) {
-            int bodySize = PROTOCOL_HEAD_SIZE + packet.length;
-            ByteBuffer data = ByteBuffer.allocate(bodySize).order(ByteOrder.LITTLE_ENDIAN);
-            data.putInt(bodySize);
+            ByteBuffer data = ByteBuffer.allocate(packet.length).order(ByteOrder.LITTLE_ENDIAN);
             data.put(packet);
             data.flip();
             dataBuffer.add(data);

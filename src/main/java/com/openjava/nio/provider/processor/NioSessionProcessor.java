@@ -1,6 +1,7 @@
 package com.openjava.nio.provider.processor;
 
-import com.openjava.nio.exception.SessionClosedException;
+import com.openjava.nio.exception.ClosedSessionException;
+import com.openjava.nio.exception.CreateSessionException;
 import com.openjava.nio.infrastructure.LifeCycle;
 import com.openjava.nio.provider.INetworkProvider;
 import com.openjava.nio.provider.session.INioSession;
@@ -13,8 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.ConnectException;
-import java.net.SocketTimeoutException;
 import java.nio.channels.*;
 import java.util.Queue;
 import java.util.Set;
@@ -254,8 +253,8 @@ public class NioSessionProcessor extends LifeCycle implements IProcessor<INioSes
                     throw new IllegalStateException();
                 }
             } catch (IOException iex) {
-                if (iex instanceof SessionClosedException) {
-                    LOG.error(iex.getMessage());
+                if (iex instanceof ClosedSessionException) {
+                    LOG.info(iex.getMessage());
                 } else {
                     LOG.error("processKey io exception", iex);
                 }
@@ -279,7 +278,6 @@ public class NioSessionProcessor extends LifeCycle implements IProcessor<INioSes
             SelectionKey key = session.getSelectionKey();
             if (key.isReadable()) {
                 LOG.debug("Starting to read the session[SID={}]", session.getId());
-//                ByteBuffer packet = sessionHandler.processReadRequest(session);
                 byte[] packet = session.getDataChannel().read();
                 while (packet != null) { // Make sure we will have better socket IO usage
                     // Retry until no data in socket
@@ -288,7 +286,6 @@ public class NioSessionProcessor extends LifeCycle implements IProcessor<INioSes
             } else if (key.isWritable()) {
                 LOG.debug("Starting to write the data, [SID={}]", session.getId());
                 session.getDataChannel().write();
-//                sessionHandler.processWriteRequest(session);
             }
         }
         
@@ -319,10 +316,10 @@ public class NioSessionProcessor extends LifeCycle implements IProcessor<INioSes
                     key.interestOps(0);
                     registerSession(channel, connect.eventListener, connect.dataListener);
                 } else {
-                    throw new ConnectException("finishConnect failed");
+                    throw new CreateSessionException("Socket channel not connected successfully");
                 }
-            } catch (Throwable ex) {
-                LOG.error("processConnect failed", ex);
+            } catch (IOException ex) {
+                LOG.error("Socket connect failed", ex);
                 connect.failed(ex);
             }
         }
@@ -468,20 +465,18 @@ public class NioSessionProcessor extends LifeCycle implements IProcessor<INioSes
                 timeout = scheduler.schedule(new ConnectTimeout(this), timeOutInMillis, TimeUnit.MILLISECONDS);
                 channel.register(selector, SelectionKey.OP_CONNECT, this);
                 LOG.debug("Registered the connect event to NIO selector {}", current.getName());
-            } catch (Throwable ex) {
+            } catch (IOException ex) {
                 LOG.error("Register the connect event exception", ex);
                 failed(ex);
             }
         }
         
-        protected void failed(Throwable failure)
+        protected void failed(IOException failure)
         {
             if (failed.compareAndSet(false, true)) {
                 ProcessorUtils.closeQuietly(channel);
                 timeout.cancel();
-                if (failure instanceof SocketTimeoutException) {
-                    eventListener.onSocketConnectTimeout();
-                }
+                eventListener.onSocketConnectFailed(failure);
             }
         }
     }
@@ -500,8 +495,8 @@ public class NioSessionProcessor extends LifeCycle implements IProcessor<INioSes
         {
             SocketChannel channel = connect.channel;
             if (channel.isConnectionPending()) {
-                LOG.warn("Connect timed out while connecting, closing it");
-                connect.failed(new SocketTimeoutException());
+                LOG.error("Connect timed out while connecting, closing it");
+                connect.failed(new CreateSessionException("Socket connect time out"));
             }
         }
     }

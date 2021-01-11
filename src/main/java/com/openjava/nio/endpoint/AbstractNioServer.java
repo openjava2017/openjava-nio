@@ -1,5 +1,6 @@
 package com.openjava.nio.endpoint;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
@@ -44,7 +45,7 @@ public abstract class AbstractNioServer extends LifeCycle implements ISessionEve
     }
 
     @Override
-    public void onSocketConnectTimeout()
+    public void onSocketConnectFailed(IOException ex)
     {
         // Ignore
     }

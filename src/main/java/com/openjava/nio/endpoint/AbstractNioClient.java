@@ -1,6 +1,6 @@
 package com.openjava.nio.endpoint;
 
-import com.openjava.nio.exception.ConnectTimeoutException;
+import com.openjava.nio.exception.CreateSessionException;
 import com.openjava.nio.provider.NioNetworkProvider;
 import com.openjava.nio.provider.session.INioSession;
 import com.openjava.nio.provider.session.listener.ISessionDataListener;
@@ -25,14 +25,14 @@ public abstract class AbstractNioClient
     private NioNetworkProvider networkProvider;
     private long connTimeOutInMillis = 10 * 1000;
 
-    public abstract byte[] sendAndReceived(byte[] packet, long receivedTimeOutInMillis) throws IOException, InterruptedException;
+    public abstract byte[] sendAndReceived(byte[] packet, long receivedTimeOutInMillis) throws IOException;
 
     public INioSession getSession(ISessionDataListener dataListener) throws IOException
     {
         NioConnectFactory sessionFactory = new NioConnectFactory();
         INioSession session = sessionFactory.createSession(dataListener);
         if (session == null) {
-            throw new ConnectTimeoutException("Session created timeout");
+            throw new CreateSessionException("Failed to create nio session");
         }
         return session;
     }
@@ -122,7 +122,7 @@ public abstract class AbstractNioClient
         }
 
         @Override
-        public void onSocketConnectTimeout()
+        public void onSocketConnectFailed(IOException ex)
         {
             final ReentrantLock lock = this.lock;
             try {
@@ -134,7 +134,7 @@ public abstract class AbstractNioClient
                     lock.unlock();
                 }
             } catch (InterruptedException iex) {
-                LOG.error("onSocketConnectTimeout thread interrupted");
+                LOG.error("onSocketConnectFailed thread interrupted");
             }
         }
     }

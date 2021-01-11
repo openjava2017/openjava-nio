@@ -1,6 +1,7 @@
 package com.openjava.nio.endpoint.impl;
 
 import com.openjava.nio.endpoint.AbstractNioClient;
+import com.openjava.nio.exception.NioSessionException;
 import com.openjava.nio.provider.session.INioSession;
 import com.openjava.nio.provider.session.listener.ISessionDataListener;
 import org.slf4j.Logger;
@@ -16,7 +17,7 @@ public class PeriodNioClient extends AbstractNioClient
     private Logger LOG = LoggerFactory.getLogger(this.getClass());
 
     @Override
-    public byte[] sendAndReceived(byte[] packet, long receivedTimeOutInMillis) throws IOException, InterruptedException
+    public byte[] sendAndReceived(byte[] packet, long receivedTimeOutInMillis) throws IOException
     {
         INioSession session = null;
         SessionDataContext context = new SessionDataContext();
@@ -33,7 +34,7 @@ public class PeriodNioClient extends AbstractNioClient
 
     private class SessionDataContext implements ISessionDataListener
     {
-        private BlockingQueue<byte[]> data = new ArrayBlockingQueue<byte[]>(8);
+        private BlockingQueue<byte[]> data = new ArrayBlockingQueue<>(8);
 
         @Override
         public void onDataReceived(INioSession session, byte[] packet)
@@ -43,9 +44,13 @@ public class PeriodNioClient extends AbstractNioClient
             }
         }
 
-        public byte[] read(long receivedTimeOutInMillis) throws InterruptedException
+        public byte[] read(long receivedTimeOutInMillis) throws NioSessionException
         {
-            return data.poll(receivedTimeOutInMillis, TimeUnit.MILLISECONDS);
+            try {
+                return data.poll(receivedTimeOutInMillis, TimeUnit.MILLISECONDS);
+            } catch (Exception ex) {
+                throw new NioSessionException("Session read data timeout");
+            }
         }
     }
 }

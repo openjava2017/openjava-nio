@@ -9,7 +9,7 @@ public interface Scheduler
         boolean cancel();
     }
 
-    public Task schedule(Runnable task, long delay, TimeUnit units);
+    Task schedule(Runnable task, long delay, TimeUnit units);
     
-    public void shutdown();
+    void shutdown();
 }

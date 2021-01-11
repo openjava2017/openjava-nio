@@ -1,6 +1,7 @@
 package com.openjava.nio.provider.session;
 
 import com.openjava.nio.provider.processor.IProcessor;
+import com.openjava.nio.provider.session.data.BufferedDataChannel;
 import com.openjava.nio.provider.session.data.IDataChannel;
 import com.openjava.nio.provider.session.data.SessionDataChannel;
 
@@ -33,7 +34,7 @@ public class NioSession implements INioSession
         this.channel = channel;
         this.key = key;
         this.processor = processor;
-        this.dataChannel =  new SessionDataChannel(this);
+        this.dataChannel =  new BufferedDataChannel(this);
         this.lastUsedTime = System.currentTimeMillis();
         this.state = SessionState.CONNECTED;
     }

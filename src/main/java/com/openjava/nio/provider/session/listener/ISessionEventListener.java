@@ -2,6 +2,8 @@ package com.openjava.nio.provider.session.listener;
 
 import com.openjava.nio.provider.session.INioSession;
 
+import java.io.IOException;
+
 public interface ISessionEventListener
 {
     /**
@@ -19,5 +21,5 @@ public interface ISessionEventListener
     /**
      * Only for client socket, fired when a client socket connect timeout
      */
-    void onSocketConnectTimeout();
+    void onSocketConnectFailed(IOException ex);
 }
