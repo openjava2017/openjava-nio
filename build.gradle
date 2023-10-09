@@ -1,4 +1,5 @@
 apply plugin: 'java'
+apply plugin: 'java-library'
 apply plugin: 'idea'
 
 group = 'com.diligrp'
@@ -26,12 +27,12 @@ repositories {
     mavenLocal()
     jcenter()
     maven {
-        url 'http://maven.aliyun.com/nexus/content/groups/public/'
+        url 'https://maven.aliyun.com/nexus/content/groups/public/'
     }
 }
 
 dependencies {
-    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
-    compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
-    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.11'
+    implementation 'org.slf4j:slf4j-api:1.7.30'
+    implementation 'ch.qos.logback:logback-classic:1.2.3'
+    implementation 'org.apache.commons:commons-lang3:3.11'
 }
