@@ -3,9 +3,7 @@ package com.openjava.nio.provider.session;
 import com.openjava.nio.provider.processor.IProcessor;
 import com.openjava.nio.provider.session.data.BufferedDataChannel;
 import com.openjava.nio.provider.session.data.IDataChannel;
-import com.openjava.nio.provider.session.data.SessionDataChannel;
 
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicLong;

@@ -21,15 +21,19 @@ public class ScheduledExecutor implements Scheduler
     
     public ScheduledExecutor(final String name, final int threadNum, final boolean daemon)
     {
-        scheduler = new ScheduledThreadPoolExecutor(threadNum, new ThreadFactory() {
+        this(threadNum, new ThreadFactory() {
             @Override
-            public Thread newThread(Runnable r)
-            {
+            public Thread newThread(Runnable r) {
                 Thread thread = new Thread(r, name == null ? "Scheduler-" + hashCode() : name);
                 thread.setDaemon(daemon);
                 return thread;
             }
         });
+    }
+
+    public ScheduledExecutor(final int threadNum, ThreadFactory factory)
+    {
+        scheduler = new ScheduledThreadPoolExecutor(threadNum, factory);
         scheduler.setRemoveOnCancelPolicy(true);
     }
     

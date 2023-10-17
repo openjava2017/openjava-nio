@@ -8,15 +8,13 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import com.openjava.nio.provider.processor.ProcessorUtils;
+import com.openjava.nio.provider.processor.*;
 import com.openjava.nio.provider.session.listener.ISessionDataListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.openjava.nio.infrastructure.LifeCycle;
 import com.openjava.nio.exception.MultiException;
-import com.openjava.nio.provider.processor.IProcessor;
-import com.openjava.nio.provider.processor.NioSessionProcessor;
 import com.openjava.nio.provider.session.INioSession;
 import com.openjava.nio.provider.session.listener.ISessionEventListener;
 import com.openjava.nio.util.ScheduledExecutor;
@@ -24,23 +22,26 @@ import com.openjava.nio.util.Scheduler;
 
 public class NioNetworkProvider extends LifeCycle implements INetworkProvider
 {
-    private static Logger logger = LoggerFactory.getLogger(NioNetworkProvider.class);
+    private static final Logger LOG = LoggerFactory.getLogger(NioNetworkProvider.class);
 
     private static final int DEFAULT_SERVER_BACKLOG = 50;
-    
-    private volatile long pointer = 0L;
     
     private int processors = Runtime.getRuntime().availableProcessors();
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final IProcessor<INioSession>[] pool =  new NioSessionProcessor[processors];
+    private final IProcessorChain processorChain = new SimpleProcessorChain(pool);
     private final Scheduler scheduler = new ScheduledExecutor();
 
-    private static NioNetworkProvider instance = null;
+    private static volatile NioNetworkProvider instance = null;
 
     public static synchronized NioNetworkProvider getInstance() throws Exception {
         if (instance == null) {
-            instance = new NioNetworkProvider();
-            instance.start();
+            synchronized (NioNetworkProvider.class) {
+                if (instance == null) {
+                    instance = new NioNetworkProvider();
+                    instance.start();
+                }
+            }
         }
 
         return instance;
@@ -58,7 +59,7 @@ public class NioNetworkProvider extends LifeCycle implements INetworkProvider
             channel = SocketChannel.open();
             channel.configureBlocking(false);
             channel.connect(remoteAddress);
-            nextProcessor().registerConnection(channel, eventListener, dataListener, timeoutInMillis);
+            processorChain.registerConnection(channel, eventListener, dataListener, timeoutInMillis);
             result = true;
         } finally {
             if (!result) {
@@ -80,7 +81,7 @@ public class NioNetworkProvider extends LifeCycle implements INetworkProvider
             ServerSocket serverSocket = socketChannel.socket();
             serverSocket.setReuseAddress(true);
             serverSocket.bind(localAddress, DEFAULT_SERVER_BACKLOG);
-            nextProcessor().registerServer(socketChannel, eventListener, dataListener);
+            processorChain.registerServer(socketChannel, eventListener, dataListener);
             result = true;
         } finally {
             if (!result) {
@@ -93,7 +94,7 @@ public class NioNetworkProvider extends LifeCycle implements INetworkProvider
     public void registerSession(SocketChannel channel, ISessionEventListener eventListener, ISessionDataListener dataListener)
     {
         checkState();
-        nextProcessor().registerSession(channel, eventListener, dataListener);
+        processorChain.registerSession(channel, eventListener, dataListener);
     }
 
     @Override
@@ -102,7 +103,7 @@ public class NioNetworkProvider extends LifeCycle implements INetworkProvider
         for (int i = 0; i < pool.length; i++) {
             boolean result = false;
             try {
-                pool[i] = new NioSessionProcessor(i, this, executor, scheduler);
+                pool[i] = new NioSessionProcessor(i, processorChain, executor, scheduler);
                 pool[i].start();
                 result = true;
             } finally {
@@ -111,7 +112,7 @@ public class NioNetworkProvider extends LifeCycle implements INetworkProvider
                 }
             }
         }
-        logger.info("Socket processor manager started, pool size=" + pool.length);
+        LOG.info("Socket processor manager started, pool size=" + pool.length);
     }
 
     @Override
@@ -127,17 +128,7 @@ public class NioNetworkProvider extends LifeCycle implements INetworkProvider
         }
         exception.ifExceptionThrow();
         executor.shutdown();
-        logger.info("Socket processor manager stopped");
-    }
-    
-    private IProcessor<INioSession> nextProcessor()
-    {
-        // The ++ increment here is not atomic, but it does not matter,
-        // so long as the value changes sometimes, then connections will
-        // be distributed over the available selectors.
-        long s = pointer++;
-        int index = (int)(s % pool.length);
-        return pool[index];
+        LOG.info("Socket processor manager stopped");
     }
     
     private void checkState()

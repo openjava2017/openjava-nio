@@ -27,23 +27,23 @@ public class NioSessionProcessor extends LifeCycle implements IProcessor<INioSes
 {
     private static Logger LOG = LoggerFactory.getLogger(NioSessionProcessor.class);
     
-    private long id;
+    private final long id;
     private Thread current;
     private Selector selector;
-    private INetworkProvider provider;
+    private final IProcessorChain processorChain;
     private final Executor executor;
     private final Scheduler scheduler;
     
     private final Queue<Runnable> changes = new ConcurrentLinkedQueue<Runnable>();
     private final AtomicReference<State> state = new AtomicReference<State>(State.PROCESS);
     
-    public NioSessionProcessor(long id, INetworkProvider provider, Executor executor, Scheduler scheduler)
+    public NioSessionProcessor(long id, IProcessorChain processorChain, Executor executor, Scheduler scheduler)
     {
         if (executor == null) {
             throw new IllegalArgumentException("Executor cannot be empty");
         }
         this.id = id;
-        this.provider = provider;
+        this.processorChain = processorChain;
         this.executor = executor;
         this.scheduler = scheduler;
     }
@@ -210,7 +210,7 @@ public class NioSessionProcessor extends LifeCycle implements IProcessor<INioSes
                     }
                 }
                 // Must check first for SELECT and *then* for WAKEUP
-                // because we read the state twice in the assert, and
+                // because we read the state twice in assert, and
                 // it could change from SELECT to WAKEUP in between.
                 assert state.get() == State.SELECT || state.get() == State.WAKEUP;
 
@@ -283,9 +283,11 @@ public class NioSessionProcessor extends LifeCycle implements IProcessor<INioSes
                     // Retry until no data in socket
                     packet = session.getDataChannel().read();
                 }
+                session.kick();
             } else if (key.isWritable()) {
                 LOG.debug("Starting to write the data, [SID={}]", session.getId());
                 session.getDataChannel().write();
+                session.kick();
             }
         }
         
@@ -297,7 +299,7 @@ public class NioSessionProcessor extends LifeCycle implements IProcessor<INioSes
             Acceptor acceptor = (Acceptor) key.attachment();
             try {
                 while ((channel = serverSocket.accept()) != null) {
-                    provider.registerSession(channel, acceptor.eventListener, acceptor.dataListener);
+                    processorChain.registerSession(channel, acceptor.eventListener, acceptor.dataListener);
                 }
             } catch (Throwable ex) {
                 ProcessorUtils.closeQuietly(channel);

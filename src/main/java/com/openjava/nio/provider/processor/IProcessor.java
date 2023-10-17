@@ -8,19 +8,11 @@ import com.openjava.nio.provider.session.INioSession;
 import com.openjava.nio.provider.session.listener.ISessionDataListener;
 import com.openjava.nio.provider.session.listener.ISessionEventListener;
 
-public interface IProcessor<T extends INioSession> extends ILifeCycle
+public interface IProcessor<T extends INioSession> extends IProcessorChain, ILifeCycle
 {
     long id();
     
-    void registerServer(ServerSocketChannel serverSocket, ISessionEventListener eventListener,
-        ISessionDataListener dataListner);
-    
-    void registerConnection(SocketChannel channel, ISessionEventListener eventListener,
-        ISessionDataListener dataListner, long timeoutInMillis);
-    
-    void registerSession(SocketChannel channel, ISessionEventListener eventListener, ISessionDataListener dataListener);
-    
-    void registerWriter(INioSession session);
+    void registerWriter(T session);
     
     void unregisterSession(T session);
 }

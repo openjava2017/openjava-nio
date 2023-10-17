@@ -80,7 +80,7 @@ public abstract class AbstractNioClient
 
                 try {
                     this.session = session;
-                    hasSession.signalAll();
+                    this.hasSession.signalAll();
                 } finally {
                     lock.unlock();
                 }
@@ -102,8 +102,8 @@ public abstract class AbstractNioClient
             try {
                 lock.lockInterruptibly();
                 try {
-                    if (session == null) {
-                        hasSession.await(connTimeOutInMillis, TimeUnit.MILLISECONDS);
+                    if (this.session == null) {
+                        this.hasSession.await(connTimeOutInMillis, TimeUnit.MILLISECONDS);
                     }
                 } finally {
                     lock.unlock();
@@ -112,7 +112,7 @@ public abstract class AbstractNioClient
                 LOG.error("createSession thread interrupted");
             }
 
-            return session;
+            return this.session;
         }
 
         @Override
@@ -129,7 +129,7 @@ public abstract class AbstractNioClient
                 lock.lockInterruptibly();
 
                 try {
-                    hasSession.signalAll();
+                    this.hasSession.signalAll();
                 } finally {
                     lock.unlock();
                 }

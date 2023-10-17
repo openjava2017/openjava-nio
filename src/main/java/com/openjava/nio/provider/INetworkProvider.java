@@ -10,10 +10,10 @@ import java.nio.channels.SocketChannel;
 public interface INetworkProvider
 {
     void registerConnection(SocketAddress remoteAddress, ISessionEventListener eventListener,
-        ISessionDataListener dataListner, long timeoutInMillis) throws IOException;
+        ISessionDataListener dataListener, long timeoutInMillis) throws IOException;
 
     void registerServer(SocketAddress localAddress, ISessionEventListener eventListener,
-        ISessionDataListener dataListner) throws IOException;
+        ISessionDataListener dataListener) throws IOException;
 
     void registerSession(SocketChannel channel, ISessionEventListener eventListener,
         ISessionDataListener dataListener);
