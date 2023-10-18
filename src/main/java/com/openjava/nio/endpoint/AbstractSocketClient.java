@@ -1,6 +1,7 @@
 package com.openjava.nio.endpoint;
 
 import com.openjava.nio.exception.CreateSessionException;
+import com.openjava.nio.infrastructure.LifeCycle;
 import com.openjava.nio.provider.processor.*;
 import com.openjava.nio.provider.session.INioSession;
 import com.openjava.nio.provider.session.listener.ISessionDataListener;
@@ -20,36 +21,45 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class AbstractSocketClient {
+public abstract class AbstractSocketClient extends LifeCycle
+{
     private static final Logger LOG = LoggerFactory.getLogger(AbstractSocketClient.class);
-    private static final int CONNECT_TIMEOUT_MILLIS = 10 *1000;
+    private static final int CONNECT_TIMEOUT_MILLIS = 10 * 1000;
 
+    private final String host;
+    private final int port;
     private final long connTimeOutInMillis;
-    private final IProcessor<INioSession>[] processors;
-    private final IProcessorChain processorChain;
 
-    public AbstractSocketClient() throws Exception {
-        this(CONNECT_TIMEOUT_MILLIS, Runtime.getRuntime().availableProcessors(), Executors.newCachedThreadPool());
+    // for client side, only one processor is enough
+    private final IProcessor<INioSession>[] processors = new IProcessor[1];
+    private final IProcessorChain processorChain = new SimpleProcessorChain(this.processors);
+    private final ExecutorService executor;
+    private final Scheduler scheduler;
+
+    public AbstractSocketClient(String host, int port)
+    {
+        // for client side, only one processor thread is enough
+        this(host, port, CONNECT_TIMEOUT_MILLIS, Executors.newSingleThreadExecutor());
     }
 
-    public AbstractSocketClient(int connTimeOutInMillis, int processorThreads, ExecutorService executor) throws Exception {
+    public AbstractSocketClient(String host, int port, int connTimeOutInMillis, ExecutorService executor)
+    {
+        AssertUtils.notEmpty(host, "host cannot be null");
+        AssertUtils.isTrue(port > 1024, "Invalid port value");
         AssertUtils.isTrue(connTimeOutInMillis > 0, "invalid connTimeOutInMillis value");
-        AssertUtils.isTrue(processorThreads > 0, "invalid processorThreads value");
         AssertUtils.notNull(executor, "executor cannot be null");
 
+        this.host = host;
+        this.port = port;
         this.connTimeOutInMillis = connTimeOutInMillis;
-        this.processors = new IProcessor[processorThreads];
-        this.processorChain = new SimpleProcessorChain(this.processors);
-        Scheduler scheduler = new ScheduledExecutor("connect-timeout-scanner", true);
-        for (int i = 0; i < processors.length; i++) {
-            this.processors[i] = new NioSessionProcessor(i, processorChain, executor, scheduler);
-            this.processors[i].start();
-        }
-
+        this.executor = executor;
+        this.scheduler = new ScheduledExecutor("connect-timeout-scanner", true);
     }
 
-    public INioSession getSession(String host, int port, ISessionDataListener dataListener) throws IOException {
-        NioConnectFactory sessionFactory = new NioConnectFactory(host, port);
+    public INioSession getSession(ISessionDataListener dataListener) throws IOException
+    {
+        checkState();
+        NioConnectFactory sessionFactory = new NioConnectFactory();
         INioSession session = sessionFactory.createSession(dataListener);
         if (session == null) {
             throw new CreateSessionException("Failed to create nio session");
@@ -57,27 +67,40 @@ public abstract class AbstractSocketClient {
         return session;
     }
 
-    private class NioConnectFactory implements ISessionEventListener {
-        private final String host;
-        private final int port;
+    @Override
+    protected void doStart() throws Exception
+    {
+        this.processors[0] = new NioSessionProcessor(0, processorChain, executor, scheduler);
+        this.processors[0].start();
+        LOG.info("Client socket processor manager started");
+    }
 
+    protected void doStop() throws Exception
+    {
+        this.processors[0].stop();
+        LOG.info("Client socket processor manager stopped");
+
+        scheduler.shutdown();
+    }
+
+    private void checkState()
+    {
+        if (!isRunning()) {
+            throw new IllegalStateException("Invalid processor state, state:" + getState());
+        }
+    }
+
+    private class NioConnectFactory implements ISessionEventListener
+    {
         private volatile INioSession session;
-
         private final ReentrantLock lock = new ReentrantLock();
 
         /** Condition for waiting takes */
         private final Condition hasSession = lock.newCondition();
 
-        public NioConnectFactory(String host, int port) {
-            AssertUtils.notEmpty(host, "host cannot be null");
-            AssertUtils.isTrue(port > 1024, "Invalid port value");
-
-            this.host = host;
-            this.port = port;
-        }
-
         @Override
-        public void onSessionCreated(INioSession session) {
+        public void onSessionCreated(INioSession session)
+        {
             final ReentrantLock lock = this.lock;
             try {
                 lock.lockInterruptibly();
@@ -93,7 +116,8 @@ public abstract class AbstractSocketClient {
             }
         }
 
-        public INioSession createSession(ISessionDataListener dataListener) throws IOException {
+        public INioSession createSession(ISessionDataListener dataListener) throws IOException
+        {
             InetSocketAddress remoteAddress = new InetSocketAddress(host, port);
             boolean result = false;
             SocketChannel channel = null;
@@ -128,12 +152,14 @@ public abstract class AbstractSocketClient {
         }
 
         @Override
-        public void onSessionClosed(INioSession session) {
+        public void onSessionClosed(INioSession session)
+        {
             // Ignore closed event
         }
 
         @Override
-        public void onSocketConnectFailed(IOException ex) {
+        public void onSocketConnectFailed(IOException ex)
+        {
             final ReentrantLock lock = this.lock;
             try {
                 lock.lockInterruptibly();

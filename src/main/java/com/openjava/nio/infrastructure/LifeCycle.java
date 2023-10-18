@@ -12,7 +12,7 @@ public abstract class LifeCycle implements ILifeCycle
     private volatile int state = STOPPED;
 
 	@Override
-	public void start() throws Exception 
+	public void start() throws Exception
 	{
 		// Double check
 		if (state == STARTED || state == STARTING) {
