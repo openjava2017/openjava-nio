@@ -3,7 +3,6 @@ package com.openjava.nio.provider.processor;
 import com.openjava.nio.exception.ClosedSessionException;
 import com.openjava.nio.exception.CreateSessionException;
 import com.openjava.nio.infrastructure.LifeCycle;
-import com.openjava.nio.provider.INetworkProvider;
 import com.openjava.nio.provider.session.INioSession;
 import com.openjava.nio.provider.session.NioSession;
 import com.openjava.nio.provider.session.SessionContext;
