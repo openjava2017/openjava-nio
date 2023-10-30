@@ -35,6 +35,11 @@ public class NioSessionProcessor extends LifeCycle implements IProcessor<INioSes
     
     private final Queue<Runnable> changes = new ConcurrentLinkedQueue<Runnable>();
     private final AtomicReference<State> state = new AtomicReference<State>(State.PROCESS);
+
+    public NioSessionProcessor(long id, IProcessorChain processorChain, Executor executor)
+    {
+        this(id, processorChain, executor, null);
+    }
     
     public NioSessionProcessor(long id, IProcessorChain processorChain, Executor executor, Scheduler scheduler)
     {

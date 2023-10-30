@@ -113,7 +113,7 @@ public abstract class AbstractSocketServer extends LifeCycle implements ISession
         for (int i = 0; i < processors.length; i++) {
             boolean result = false;
             try {
-                processors[i] = new NioSessionProcessor(i, processorChain, executor, scheduler);
+                processors[i] = new NioSessionProcessor(i, processorChain, executor);
                 processors[i].start();
                 result = true;
             } finally {
