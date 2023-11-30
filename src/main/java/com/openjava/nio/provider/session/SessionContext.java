@@ -27,8 +27,7 @@ public class SessionContext
 
     public void fireSessionClosed()
     {
-        session.state = SessionState.CLOSED;
-        if (listener != null) {
+        if (session.state.compareAndSet(SessionState.CLOSING, SessionState.CLOSED) && listener != null) {
             listener.onSessionClosed(session);
         }
     }

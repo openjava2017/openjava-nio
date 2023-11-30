@@ -7,6 +7,7 @@ import com.openjava.nio.provider.session.data.IDataChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class NioSession implements INioSession
 {
@@ -24,7 +25,7 @@ public class NioSession implements INioSession
 
     private volatile long lastUsedTime;
 
-    protected volatile SessionState state;
+    protected final AtomicReference<SessionState> state;
 
     protected NioSession(SocketChannel channel, SelectionKey key, IProcessor<INioSession> processor)
     {
@@ -32,9 +33,10 @@ public class NioSession implements INioSession
         this.channel = channel;
         this.key = key;
         this.processor = processor;
+//        this.dataChannel =  new SessionDataChannel(this);
         this.dataChannel =  new BufferedDataChannel(this);
         this.lastUsedTime = System.currentTimeMillis();
-        this.state = SessionState.CONNECTED;
+        this.state = new AtomicReference<>(SessionState.CONNECTED);
     }
     
     @Override
@@ -83,7 +85,7 @@ public class NioSession implements INioSession
     @Override
     public SessionState getState()
     {
-        return this.state;
+        return this.state.get();
     }
     
 
@@ -96,15 +98,14 @@ public class NioSession implements INioSession
     @Override
     public void destroy()
     {
-        if (state == SessionState.CONNECTED) {
-            state = SessionState.CLOSING;
+        if (state.compareAndSet(SessionState.CONNECTED, SessionState.CLOSING)) {
             getProcessor().unregisterSession(this);
         }
     }
 
     private void checkState()
     {
-        if (state != SessionState.CONNECTED) {
+        if (getState() != SessionState.CONNECTED) {
             throw new IllegalStateException("Invalid session state, state:" + getState());
         }
     }
