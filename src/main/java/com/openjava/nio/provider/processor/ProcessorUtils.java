@@ -1,10 +1,10 @@
 package com.openjava.nio.provider.processor;
 
+import com.openjava.nio.provider.session.INioSession;
+
 import java.io.Closeable;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-
-import com.openjava.nio.provider.session.INioSession;
 
 public class ProcessorUtils
 {

@@ -1,9 +1,9 @@
 package com.openjava.nio.util;
 
-import java.util.concurrent.Executor;
-
 import com.openjava.nio.infrastructure.ILifeCycle;
 import com.openjava.nio.infrastructure.LifeCycle;
+
+import java.util.concurrent.Executor;
 
 public interface ThreadPool extends Executor, ILifeCycle
 {
