@@ -33,7 +33,8 @@ public class SessionContext
                 if(listener != null) {
                     listener.onSessionClosed(session);
                 }
-            case CLOSED:
+                break;
+            default:
                 break;
         }
     }
