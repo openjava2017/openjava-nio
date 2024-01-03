@@ -1,6 +1,7 @@
 package com.openjava.nio.provider.processor;
 
 import com.openjava.nio.provider.session.INioSession;
+import com.openjava.nio.provider.session.SessionContext;
 
 import java.io.Closeable;
 import java.nio.channels.SelectionKey;
@@ -27,15 +28,14 @@ public class ProcessorUtils
         {
             for (SelectionKey key : selector.keys()) {
                 Object attachment = key.attachment();
-                if (attachment instanceof INioSession) {
-                    INioSession session = (INioSession) attachment;
-                    
-                    SelectionKey k = session.getSelectionKey();
-                    if (k != null && k.isValid()) {
-                        k.cancel();
-                    }
-                    
-                    closeQuietly(session.getChannel());
+                if (key.isValid()) {
+                    key.cancel();
+                }
+                closeQuietly(key.channel());
+
+                if (attachment instanceof SessionContext) {
+                    SessionContext context = (SessionContext) attachment;
+                    context.fireSessionClosed();
                 }
             }
 
